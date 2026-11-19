@@ -12,6 +12,7 @@ A clean V2 implementation isolated from the existing website and legacy database
 - `admin.html`, `admin.css`, `admin.js`: private admin workspace with overview, property inventory (including private-bucket photo/video uploads), leads, follow-ups and closed deals
 - `schema.sql`: additive V2 database schema; all tables are prefixed `ds_v2_`
 - `storage-policies.sql`: private property media bucket policies
+- `public-media-policies.sql`: public read-only delivery for media belonging to published listings; staff-only writes
 - `config.example.js`: browser-safe configuration template
 
 ## Setup
