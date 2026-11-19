@@ -45,6 +45,6 @@
     if (profileError || !profile || !profile.active || !["super_admin","team_member"].includes(profile.role)) {
       await client.auth.signOut(); $("#loginMessage").textContent = "This account does not have admin dashboard access."; return;
     }
-    $("#loginMessage").textContent = "Signed in. Admin workspace screens are the next build stage.";
+    window.location.href = "admin.html";
   });
 })();
