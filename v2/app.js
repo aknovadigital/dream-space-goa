@@ -21,7 +21,7 @@
       const firstMedia=Array.isArray(p.media)?p.media.find(m=>m && (m.bucket==="ds-v2-public-media" || m.url)):null;
       const img=firstMedia?(firstMedia.url||client.storage.from(firstMedia.bucket).getPublicUrl(firstMedia.path).data.publicUrl):"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80";
       const price = p.price ? new Intl.NumberFormat("en-IN",{style:"currency",currency:p.currency || "INR",maximumFractionDigits:0}).format(p.price) : "Price on request";
-      return '<article class="property-card"><img loading="lazy" src="'+escapeHtml(img)+'" alt="'+escapeHtml(p.title)+'"><div class="property-info"><small>'+escapeHtml(p.listing_type.replaceAll("_"," "))+' · '+escapeHtml(p.property_type)+'</small><h3>'+escapeHtml(p.title)+'</h3><p>'+escapeHtml(p.location)+' · '+price+'</p></div></article>';
+      return '<a class="property-card" href="property.html?slug='+encodeURIComponent(p.slug||p.id)+'"><img loading="lazy" src="'+escapeHtml(img)+'" alt="'+escapeHtml(p.title)+'"><div class="property-info"><small>'+escapeHtml(p.listing_type.replaceAll("_"," "))+" · "+escapeHtml(p.property_type)+'</small><h3>'+escapeHtml(p.title)+'</h3><p>'+escapeHtml(p.location)+' · '+price+'</p><span class="text-link">View property details ↗</span></div></a>';
     }).join("");
   }
   function escapeHtml(v) { return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
