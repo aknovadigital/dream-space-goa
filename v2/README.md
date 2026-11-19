@@ -9,7 +9,7 @@ A clean V2 implementation isolated from the existing website and legacy database
 
 ## Files
 - `index.html`, `styles.css`, `app.js`: public property website and enquiry form
-- `admin.html`, `admin.css`, `admin.js`: private admin workspace with overview, property inventory, leads, follow-ups and closed deals
+- `admin.html`, `admin.css`, `admin.js`: private admin workspace with overview, property inventory (including private-bucket photo/video uploads), leads, follow-ups and closed deals
 - `schema.sql`: additive V2 database schema; all tables are prefixed `ds_v2_`
 - `storage-policies.sql`: private property media bucket policies
 - `config.example.js`: browser-safe configuration template
@@ -37,7 +37,7 @@ A clean V2 implementation isolated from the existing website and legacy database
 ## Current implementation status
 Implemented foundation: public property search/listing, public enquiry insert, password login, admin dashboard overview, property CRUD, lead CRUD, follow-up CRUD/completion, and deal CRUD.
 
-Still to implement and test: image/video upload UI, broker assignment management screens, client private-link generation/verification, team permission editor, richer client profile workflow, reminder delivery/notifications, and end-to-end security/functional testing. The `permissions` JSON field is reserved for the future permission editor; team users currently receive the staff-level data access described in the policies.
+Still to implement and test: public-facing delivery/display of private property media, broker assignment management screens, client private-link generation/verification, team permission editor, richer client profile workflow, reminder delivery/notifications, and end-to-end security/functional testing. The `permissions` JSON field is reserved for the future permission editor; team users currently receive the staff-level data access described in the policies.
 
 ## Important
 Do not run the old SQL files for V2. Do not expose Supabase service-role credentials. Test the new version before connecting it to the live domain.
