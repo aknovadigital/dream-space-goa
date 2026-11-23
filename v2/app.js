@@ -43,9 +43,5 @@
     const {data,error} = await client.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});
     if (error) { $("#loginMessage").textContent = error.message; return; }
     const {data:profile,error:profileError} = await client.from("ds_v2_profiles").select("role,active").eq("id",data.user.id).single();
-    if (profileError || !profile || !profile.active || !["super_admin","team_member"].includes(profile.role)) {
-      await client.auth.signOut(); $("#loginMessage").textContent = "This account does not have admin dashboard access."; return;
-    }
-    window.location.href = "admin.html";
-  });
+    if (profileError || !profile || !profile.active || !["super_admin","team_member","broker"].includes(profile.role)) {\n      await client.auth.signOut(); $("#loginMessage").textContent = "This account is not active or authorised."; return;\n    }\n    window.location.href = profile.role === "broker" ? "broker.html" : "admin.html";  });
 })();
