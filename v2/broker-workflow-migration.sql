@@ -1,42 +1,107 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dream Space | Admin Workspace</title><link rel="stylesheet" href="admin.css"></head>
-<body><div id="loginView" class="login-wrap"><form id="adminLogin" class="login-card"><p class="eyebrow">DREAM SPACE GOA · PRIVATE WORKSPACE</p><h1>Welcome back.</h1><p class="muted">Sign in to manage your properties and client relationships.</p><label>Email<input name="email" type="email" required autocomplete="username"></label><label>Password<input name="password" type="password" required autocomplete="current-password"></label><button class="primary">Sign in</button><p id="loginError" class="notice"></p></form></div>
-<div id="appView" class="app hidden"><aside class="sidebar"><a class="brand" href="index.html"><img src="assets/dream-space-logo.svg" alt="Dream Space"><small>ADMIN WORKSPACE</small></a><div class="side-label">WORKSPACE</div><button class="nav active" data-view="overview">Overview</button><button class="nav" data-view="properties">Properties</button><button class="nav" data-view="leads">Leads & clients</button><button class="nav" data-view="followups">Follow-ups</button><button class="nav" data-view="deals">Closed deals</button><button class="nav extra-nav" data-extra-view="brokers">Manage brokers</button><button class="nav extra-nav" data-extra-view="submissions">Submissions</button><div class="side-bottom"><span id="signedInAs"></span><button id="logoutBtn" class="quiet">Sign out</button></div></aside>
-<main class="main"><header class="topbar"><div><p class="eyebrow">DREAM SPACE GOA</p><h1 id="pageTitle">Business overview</h1></div><span class="live">V2 WORKSPACE</span></header>
-<section id="overviewView" class="view"><div class="stats" id="stats"></div><div class="panel"><div class="panel-head"><h2>Today's follow-ups</h2><button class="small" data-goto="followups">View all</button></div><div id="todayList" class="table-wrap"></div></div><div class="panel"><div class="panel-head"><h2>Recent enquiries</h2><button class="small" data-goto="leads">View all</button></div><div id="recentLeads" class="table-wrap"></div></div></section>
-<section id="propertiesView" class="view hidden"><div class="toolbar"><p class="muted">Manage public, broker, exclusive and internal inventory.</p><button class="primary" id="addProperty">+ Add property</button></div><div class="filters"><input id="propertySearch" placeholder="Search title or location"><select id="categoryFilter"><option value="">All inventory</option><option value="public">Public</option><option value="broker">Broker</option><option value="exclusive">Exclusive client</option><option value="private">Private / internal</option></select></div><div class="panel table-wrap" id="propertiesTable"></div></section>
-<section id="leadsView" class="view hidden"><div class="toolbar"><p class="muted">Manage enquiries, requirements and lead progress.</p><button class="primary" id="addLead">+ Add lead</button></div><div class="panel table-wrap" id="leadsTable"></div></section>
-<section id="followupsView" class="view hidden"><div class="toolbar"><p class="muted">Calls, meetings and site visits that need attention.</p><button class="primary" id="addFollowup">+ Schedule follow-up</button></div><div class="panel table-wrap" id="followupsTable"></div></section>
-<section id="dealsView" class="view hidden"><div class="toolbar"><p class="muted">Completed transactions and brokerage records.</p><button class="primary" id="addDeal">+ Record deal</button></div><div class="panel table-wrap" id="dealsTable"></div></section>
-<section id="brokersExtraView" class="view hidden"><div class="toolbar"><p class="muted">Create and manage broker accounts.</p><button class="primary" id="newBroker">+ Add broker</button></div><div class="panel table-wrap" id="brokersTable"></div></section>
-<section id="submissionsExtraView" class="view hidden"><div class="toolbar"><p class="muted">Review broker property submissions before publication.</p><button class="small" id="refreshSubmissions">Refresh</button></div><div id="submissionsList" class="submission-list"></div></section>
-</main></div>
-<dialog id="editor"><form id="editorForm"><div class="modal-head"><h2 id="editorTitle">Add record</h2><button type="button" class="quiet" id="closeEditor">✕</button></div><div id="editorFields" class="fields"></div><section id="mediaManager" class="media-manager hidden"><h3>Property photos & videos</h3><p class="muted">Upload images or videos for this property. Files are stored in the private Dream Space media bucket.</p><input id="propertyMediaFiles" type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple><div id="mediaList" class="media-list"></div></section><p id="editorError" class="notice"></p><div class="modal-actions"><button type="button" class="quiet" id="cancelEditor">Cancel</button><button class="primary">Save record</button></div></form></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="admin.js"></script><script src="admin-extra.js"></script></body></html>
--- Restrict broker updates to their own resubmission data and media.
-create or replace function public.ds_v2_guard_broker_submission_update()
-returns trigger language plpgsql security definer set search_path=public
-as $$
+-- Dream Space V2: broker accounts and moderated property submissions.
+-- Run after v2/schema.sql and v2/broker-visibility-migration.sql.
+
+alter table public.ds_v2_properties
+ add column if not exists source_broker_id uuid references public.ds_v2_profiles(id) on delete set null,
+ add column if not exists google_maps_url text;
+
+create table if not exists public.ds_v2_property_submissions(
+ id uuid primary key default gen_random_uuid(),
+ broker_id uuid not null references public.ds_v2_profiles(id) on delete cascade,
+ title text not null, description text, location text not null, google_maps_url text,
+ property_type text not null,
+ listing_type text not null check(listing_type in ('sale','rent','commercial_lease')),
+ price numeric(14,2), bedrooms integer, bathrooms integer, built_up_area numeric(12,2),
+ area_unit text not null default 'sqft', features jsonb not null default '[]'::jsonb,
+ media jsonb not null default '[]'::jsonb,
+ status text not null default 'pending' check(status in ('pending','changes_requested','approved','rejected')),
+ admin_comment text, reviewed_by uuid references public.ds_v2_profiles(id),
+ reviewed_at timestamptz, approved_property_id uuid references public.ds_v2_properties(id) on delete set null,
+ created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create index if not exists ds_v2_submissions_broker_idx on public.ds_v2_property_submissions(broker_id,created_at desc);
+create index if not exists ds_v2_submissions_status_idx on public.ds_v2_property_submissions(status,created_at desc);
+alter table public.ds_v2_property_submissions enable row level security;
+
+drop policy if exists ds_v2_submission_broker_read_own on public.ds_v2_property_submissions;
+create policy ds_v2_submission_broker_read_own on public.ds_v2_property_submissions for select to authenticated
+using(broker_id=auth.uid() and public.ds_v2_is_broker());
+
+drop policy if exists ds_v2_submission_broker_insert_own on public.ds_v2_property_submissions;
+create policy ds_v2_submission_broker_insert_own on public.ds_v2_property_submissions for insert to authenticated
+with check(broker_id=auth.uid() and public.ds_v2_is_broker() and status='pending');
+
+drop policy if exists ds_v2_submission_broker_resubmit on public.ds_v2_property_submissions;
+create policy ds_v2_submission_broker_resubmit on public.ds_v2_property_submissions for update to authenticated
+using(broker_id=auth.uid() and public.ds_v2_is_broker() and status in ('pending','changes_requested'))
+with check(broker_id=auth.uid() and public.ds_v2_is_broker() and status='pending');
+
+drop policy if exists ds_v2_submission_staff_manage on public.ds_v2_property_submissions;
+create policy ds_v2_submission_staff_manage on public.ds_v2_property_submissions for all to authenticated
+using(public.ds_v2_is_staff()) with check(public.ds_v2_is_staff());
+grant select,insert,update on public.ds_v2_property_submissions to authenticated;
+
+-- Allow brokers to edit only their own display name and phone, never access privileges.
+create or replace function public.ds_v2_guard_profile_self_update()
+returns trigger language plpgsql security definer set search_path=public as $$
 begin
-  if auth.uid() = old.broker_id and not public.ds_v2_is_staff() then
-    if old.status not in ('pending','changes_requested')
-      or new.broker_id is distinct from old.broker_id
-      or new.status <> 'pending'
-      or new.admin_comment is distinct from old.admin_comment
-      or new.reviewed_by is distinct from old.reviewed_by
-      or new.reviewed_at is distinct from old.reviewed_at
-      or new.approved_property_id is distinct from old.approved_property_id
-      or new.created_at is distinct from old.created_at then
-      raise exception 'Only resubmission of your own pending or changes-requested property is allowed.';
-    end if;
-    if old.status = 'pending' and (to_jsonb(new) - 'media' - 'updated_at') is distinct from (to_jsonb(old) - 'media' - 'updated_at') then
-      raise exception 'A pending submission cannot be edited unless the admin requests changes.';
-    end if;
+ if auth.uid()=old.id and not public.ds_v2_is_admin() then
+  if new.role is distinct from old.role or new.active is distinct from old.active
+   or new.permissions is distinct from old.permissions or new.email is distinct from old.email
+   or new.id is distinct from old.id then
+   raise exception 'You may only update your own name and phone number.';
   end if;
-  new.updated_at = now();
-  return new;
-end;
-$$;
+ end if;
+ return new;
+end; $$;
+drop trigger if exists ds_v2_profile_self_update_guard on public.ds_v2_profiles;
+create trigger ds_v2_profile_self_update_guard before update on public.ds_v2_profiles
+for each row execute function public.ds_v2_guard_profile_self_update();
+
+drop policy if exists ds_v2_profile_self_update on public.ds_v2_profiles;
+create policy ds_v2_profile_self_update on public.ds_v2_profiles for update to authenticated
+using(id=auth.uid() and active=true) with check(id=auth.uid() and active=true);
+
+-- Broker submission updates may only resubmit a change-requested record, or attach media to a pending one.
+create or replace function public.ds_v2_guard_broker_submission_update()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+ if auth.uid()=old.broker_id and not public.ds_v2_is_staff() then
+  if old.status not in ('pending','changes_requested') or new.broker_id is distinct from old.broker_id
+   or new.status<>'pending' or new.admin_comment is distinct from old.admin_comment
+   or new.reviewed_by is distinct from old.reviewed_by or new.reviewed_at is distinct from old.reviewed_at
+   or new.approved_property_id is distinct from old.approved_property_id
+   or new.created_at is distinct from old.created_at then
+   raise exception 'Only your own pending or changes-requested property can be resubmitted.';
+  end if;
+  if old.status='pending' and (to_jsonb(new)-'media'-'updated_at') is distinct from (to_jsonb(old)-'media'-'updated_at') then
+   raise exception 'A pending submission cannot be edited unless the admin requests changes.';
+  end if;
+ end if;
+ new.updated_at=now();
+ return new;
+end; $$;
 drop trigger if exists ds_v2_submission_update_guard on public.ds_v2_property_submissions;
 create trigger ds_v2_submission_update_guard before update on public.ds_v2_property_submissions
 for each row execute function public.ds_v2_guard_broker_submission_update();
+
+-- Private submission uploads are stored under <submission-uuid>/<filename>.
+create or replace function public.ds_v2_can_manage_submission_media(object_name text)
+returns boolean language sql stable security definer set search_path=public as $$
+ select exists(select 1 from public.ds_v2_property_submissions s
+  where s.id::text=split_part(object_name,'/',1) and s.broker_id=auth.uid()
+   and public.ds_v2_is_broker() and s.status in ('pending','changes_requested'))
+ or public.ds_v2_is_staff();
+$$;
+revoke all on function public.ds_v2_can_manage_submission_media(text) from public;
+grant execute on function public.ds_v2_can_manage_submission_media(text) to authenticated;
+
+drop policy if exists ds_v2_submission_media_broker_insert on storage.objects;
+create policy ds_v2_submission_media_broker_insert on storage.objects for insert to authenticated
+with check(bucket_id='ds-v2-property-media' and public.ds_v2_can_manage_submission_media(name));
+drop policy if exists ds_v2_submission_media_broker_read on storage.objects;
+create policy ds_v2_submission_media_broker_read on storage.objects for select to authenticated
+using(bucket_id='ds-v2-property-media' and public.ds_v2_can_manage_submission_media(name));
+drop policy if exists ds_v2_submission_media_broker_delete on storage.objects;
+create policy ds_v2_submission_media_broker_delete on storage.objects for delete to authenticated
+using(bucket_id='ds-v2-property-media' and public.ds_v2_can_manage_submission_media(name));
