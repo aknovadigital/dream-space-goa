@@ -114,3 +114,31 @@ for delete to authenticated
 using (bucket_id='ds-v2-property-media' and public.ds_v2_can_manage_submission_media(name));
 
 -- Staff media policies already exist in storage-policies.sql.
+
+-- Protect submission review fields from broker-side edits.
+create or replace function public.ds_v2_guard_broker_submission_update()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+begin
+  if auth.uid() = old.broker_id and not public.ds_v2_is_staff() then
+    if old.status not in ('pending','changes_requested')
+      or new.broker_id is distinct from old.broker_id
+      or new.status <> 'pending'
+      or new.admin_comment is distinct from old.admin_comment
+      or new.reviewed_by is distinct from old.reviewed_by
+      or new.reviewed_at is distinct from old.reviewed_at
+      or new.approved_property_id is distinct from old.approved_property_id
+      or new.created_at is distinct from old.created_at then
+      raise exception 'Only resubmission of your own pending or changes-requested property is allowed.';
+    end if;
+    if old.status = 'pending' and (to_jsonb(new) - 'media' - 'updated_at') is distinct from (to_jsonb(old) - 'media' - 'updated_at') then
+      raise exception 'A pending submission cannot be edited unless the admin requests changes.';
+    end if;
+  end if;
+  new.updated_at = now();
+  return new;
+end;
+$$;
+drop trigger if exists ds_v2_submission_update_guard on public.ds_v2_property_submissions;
+create trigger ds_v2_submission_update_guard before update on public.ds_v2_property_submissions
+for each row execute function public.ds_v2_guard_broker_submission_update();
