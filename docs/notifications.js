@@ -24,7 +24,7 @@
  document.head.append(style);
  function host(){return document.querySelector(".topbar")||document.querySelector(".header");}
  function build(){const h=host();if(!h||document.querySelector(".ds-notify"))return;
- const wrap=document.createElement("div");wrap.className="ds-notify";wrap.innerHTML='<button class="ds-notify-trigger" type="button" aria-label="Notifications">♧<span class="ds-notify-count" hidden>0</span></button><div class="ds-notify-panel" hidden><div class="ds-notify-head"><strong>Notifications</strong><button type="button" class="ds-notify-all">Mark all as read</button></div><div class="ds-notify-list"></div></div>';
+ const wrap=document.createElement("div");wrap.className="ds-notify";wrap.innerHTML='<button class="ds-notify-trigger" type="button" aria-label="Notifications">🔔<span class="ds-notify-count" hidden>0</span></button><div class="ds-notify-panel" hidden><div class="ds-notify-head"><strong>Notifications</strong><button type="button" class="ds-notify-all">Mark all as read</button></div><div class="ds-notify-list"></div></div>';
  h.append(wrap);const trigger=wrap.querySelector(".ds-notify-trigger"),panel=wrap.querySelector(".ds-notify-panel");
  trigger.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)load()});
  document.addEventListener("click",e=>{if(!wrap.contains(e.target))panel.hidden=true});
