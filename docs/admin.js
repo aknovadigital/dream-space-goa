@@ -1,5 +1,5 @@
 (() => {
- const cfg=window.DS_CONFIG||{}, sb=window.supabase&&cfg.supabaseUrl&&!cfg.supabaseUrl.includes("YOUR-PROJECT")?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
+ const cfg=window.DS_CONFIG||{}, sb=window.supabase&&cfg.supabaseUrl&&!cfg.supabaseUrl.includes("YOUR-PROJECT")?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null; window.DS_SB=sb;
  const $=s=>document.querySelector(s), today=new Date().toISOString().slice(0,10);
  let currentUser=null, rows={properties:[],leads:[],followups:[],deals:[]}, editing=null, pendingMediaFiles=[];
  const titles={overview:"Business overview",properties:"Property inventory",leads:"Leads & clients",followups:"Follow-up manager",deals:"Closed deals"};
