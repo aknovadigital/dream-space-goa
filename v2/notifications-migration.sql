@@ -108,7 +108,7 @@ begin
       or (new.description is distinct from old.description)
       or (new.media is distinct from old.media);
   end if;
-  if not changed then return coalesce(new,old); end if;
+  if not changed then return new; end if;
 
   if new.inventory_category='broker' then
     for broker in select id from public.ds_v2_profiles where active=true and role='broker'
