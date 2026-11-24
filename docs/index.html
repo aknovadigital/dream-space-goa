@@ -13,8 +13,8 @@
 <header class="header">
   <a class="brand" href="#" aria-label="Dream Space home"><img src="assets/dream-space-logo.svg" alt="Dream Space — Land, Villas, Commercial Leasing"></a>
   <nav class="desktop-nav" aria-label="Main navigation"><a href="#homes">Properties</a><a href="#approach">Our approach</a><a href="#contact">Contact</a></nav>
-  <div class="header-actions"><a class="header-call" href="tel:+919175065537">Call us</a><button class="outline" id="adminOpen">Partner login</button></div>
-  <details class="mobile-menu"><summary aria-label="Open menu"><span></span><span></span><span></span></summary><div class="menu-panel"><a href="#homes">Properties</a><a href="#approach">Our approach</a><a href="#contact">Contact</a><button id="adminOpenMobile" type="button">Partner login</button></div></details>
+  <div class="header-actions"><a class="header-call" href="tel:+919175065537">Call us</a><button class="outline" id="brokerOpen" type="button">Broker Login</button><button class="outline" id="adminOpen" type="button">Admin Login</button></div>
+  <details class="mobile-menu"><summary aria-label="Open menu"><span></span><span></span><span></span></summary><div class="menu-panel"><a href="#homes">Properties</a><a href="#approach">Our approach</a><a href="#contact">Contact</a><button id="brokerOpenMobile" type="button">Broker Login</button><button id="adminOpenMobile" type="button">Admin Login</button></div></details>
 </header>
 <main>
 <section class="hero"><div class="hero-image" aria-hidden="true"></div><div class="hero-copy"><p class="eyebrow">LAND · VILLAS · COMMERCIAL LEASING</p><h1>Find your place<br><i>in Goa.</i></h1><p>Thoughtfully selected properties for living, escaping and investing.</p><a class="solid" href="#homes">Explore properties <span aria-hidden="true">↗</span></a></div><div class="hero-note">NORTH GOA &nbsp; / &nbsp; SOUTH GOA</div></section>
@@ -25,7 +25,7 @@
 </main>
 <footer><a class="footer-brand" href="#"><img src="assets/dream-space-logo.svg" alt="Dream Space"></a><span>Property, thoughtfully found.</span><span>© <span id="year"></span> Dream Space</span></footer>
 <div class="contact-dock" aria-label="Direct enquiry"><a class="dock-call" href="tel:+919175065537"><span class="dock-icon" aria-hidden="true">☎</span><span><strong>Call Now</strong><small>+91 91750 65537</small></span></a><a class="dock-whatsapp" href="https://wa.me/919175065537?text=Hello%20Dream%20Space%2C%20I%20am%20interested%20in%20a%20property." target="_blank" rel="noopener"><span class="dock-icon" aria-hidden="true">◉</span><span><strong>WhatsApp</strong><small>Send an enquiry</small></span></a></div>
-<dialog id="adminDialog"><form method="dialog" class="dialog-close"><button aria-label="Close">×</button></form><p class="eyebrow">PRIVATE WORKSPACE</p><h2>Partner sign in</h2><form id="loginForm"><input name="email" type="email" placeholder="Email address" required><input name="password" type="password" placeholder="Password" required><button class="solid">Sign in</button><p id="loginMessage" class="form-message"></p></form></dialog>
+<dialog id="adminDialog"><form method="dialog" class="dialog-close"><button aria-label="Close">×</button></form><p class="eyebrow">PRIVATE WORKSPACE</p><h2 id="loginTitle">Partner sign in</h2><form id="loginForm"><input name="email" type="email" placeholder="Email address" required><input name="password" type="password" placeholder="Password" required><button class="solid">Sign in</button><p id="loginMessage" class="form-message"></p></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
 <script>document.getElementById('adminOpenMobile')?.addEventListener('click',()=>{document.getElementById('adminDialog').showModal();document.querySelector('.mobile-menu').open=false;});</script>
 </body></html>
