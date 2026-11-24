@@ -45,7 +45,7 @@ for insert to authenticated with check (broker_id = auth.uid() and public.ds_v2_
 drop policy if exists ds_v2_submission_broker_resubmit on public.ds_v2_property_submissions;
 create policy ds_v2_submission_broker_resubmit on public.ds_v2_property_submissions
 for update to authenticated
-using (broker_id = auth.uid() and public.ds_v2_is_broker() and status = 'changes_requested')
+using (broker_id = auth.uid() and public.ds_v2_is_broker() and status in ('pending','changes_requested'))
 with check (broker_id = auth.uid() and public.ds_v2_is_broker() and status = 'pending');
 
 drop policy if exists ds_v2_submission_staff_manage on public.ds_v2_property_submissions;
