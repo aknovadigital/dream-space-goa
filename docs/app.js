@@ -4,7 +4,26 @@
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (s) => document.querySelector(s);
   $("#year").textContent = new Date().getFullYear();
-  $("#adminOpen").addEventListener("click", () => $("#adminDialog").showModal());
+  async function routeSignedInUser() {
+    if (!client) return false;
+    const { data: sessionData } = await client.auth.getSession();
+    const user = sessionData?.session?.user;
+    if (!user) return false;
+    const { data: profile, error } = await client.from("ds_v2_profiles")
+      .select("role,active").eq("id", user.id).single();
+    if (error || !profile || !profile.active || !["super_admin","team_member","broker"].includes(profile.role)) {
+      $("#loginMessage").textContent = "This account is not active or authorised. Please contact the administrator.";
+      return false;
+    }
+    window.location.href = profile.role === "broker" ? "broker.html" : "admin.html";
+    return true;
+  }
+  $("#adminOpen").addEventListener("click", async () => {
+    if (!(await routeSignedInUser())) $("#adminDialog").showModal();
+  });
+  $("#adminOpenMobile").addEventListener("click", async () => {
+    if (!(await routeSignedInUser())) $("#adminDialog").showModal();
+  });
 
   async function loadProperties() {
     const grid = $("#propertyGrid");
