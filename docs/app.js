@@ -4,6 +4,13 @@
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (s) => document.querySelector(s);
   $("#year").textContent = new Date().getFullYear();
+  let requestedRole = null;
+  function openLogin(role) {
+    requestedRole = role;
+    $("#loginTitle").textContent = role === "broker" ? "Broker sign in" : "Admin sign in";
+    $("#loginMessage").textContent = "";
+    $("#adminDialog").showModal();
+  }
   async function routeSignedInUser() {
     if (!client) return false;
     const { data: sessionData } = await client.auth.getSession();
@@ -19,10 +26,16 @@
     return true;
   }
   $("#adminOpen").addEventListener("click", async () => {
-    if (!(await routeSignedInUser())) $("#adminDialog").showModal();
+    if (!(await routeSignedInUser())) openLogin("admin");
   });
   $("#adminOpenMobile").addEventListener("click", async () => {
-    if (!(await routeSignedInUser())) $("#adminDialog").showModal();
+    if (!(await routeSignedInUser())) openLogin("admin");
+  });
+  $("#brokerOpen").addEventListener("click", async () => {
+    if (!(await routeSignedInUser())) openLogin("broker");
+  });
+  $("#brokerOpenMobile").addEventListener("click", async () => {
+    if (!(await routeSignedInUser())) openLogin("broker");
   });
 
   async function loadProperties() {
@@ -62,8 +75,9 @@
     const {data,error} = await client.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});
     if (error) { $("#loginMessage").textContent = error.message; return; }
     const {data:profile,error:profileError} = await client.from("ds_v2_profiles").select("role,active").eq("id",data.user.id).single();
-    if (profileError || !profile || !profile.active || !["super_admin","team_member","broker"].includes(profile.role)) {
-      await client.auth.signOut(); $("#loginMessage").textContent = "This account is not active or authorised."; return;
+    const allowedForButton = requestedRole === "broker" ? profile?.role === "broker" : ["super_admin","team_member"].includes(profile?.role);
+    if (profileError || !profile || !profile.active || !allowedForButton) {
+      await client.auth.signOut(); $("#loginMessage").textContent = requestedRole === "broker" ? "This account is not authorised for the broker portal." : "This account is not authorised for the admin portal."; return;
     }
     window.location.href = profile.role === "broker" ? "broker.html" : "admin.html";  });
 })();
