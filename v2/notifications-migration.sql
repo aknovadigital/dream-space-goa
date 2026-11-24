@@ -133,7 +133,7 @@ begin
 end; $$;
 drop trigger if exists ds_v2_property_notify_brokers on public.ds_v2_properties;
 create trigger ds_v2_property_notify_brokers
-after insert or update of title,location,price,availability,description,media,inventory_category
+after insert or update
 on public.ds_v2_properties for each row execute function public.ds_v2_notify_broker_property_change();
 
 create or replace function public.ds_v2_notify_broker_assignment()
