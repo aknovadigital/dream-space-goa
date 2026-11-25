@@ -20,3 +20,22 @@ dialog{border:0;border-radius:5px;padding:clamp(25px,5vw,40px);width:min(420px,9
 
 /* Transparent beige navigation layered over the hero image */
 @media(max-width:760px){.hero{padding-top:112px}.header .brand img{filter:none}.mobile-menu summary{background:#092e3b18}}
+
+/* Footer hierarchy: Dream Space contact details lead, AKNOVA credit stays subtle */
+.ds-footer-main{grid-template-columns:minmax(0,2fr) minmax(190px,.8fr);align-items:center;gap:34px}
+.ds-footer .footer-brand img{width:142px}
+.ds-footer-brand>p{font-size:13px;margin:11px 0 15px}
+.ds-footer-contact{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.ds-footer-contact a{font-size:14px;font-weight:600;color:var(--teal)}
+.ds-footer-credit{justify-self:end;text-align:right;font-size:10px;line-height:1.6;color:#7d8580}
+.ds-footer-credit p{margin:0}
+.ds-footer-credit strong{color:var(--teal);font-weight:700}
+.ds-footer-credit a{display:inline-block;margin-top:3px;color:var(--teal);font-size:10px}
+.ds-footer-bottom{justify-content:flex-start}
+@media(max-width:700px){
+ .ds-footer-main{grid-template-columns:1fr;gap:22px}
+ .ds-footer .footer-brand img{width:132px}
+ .ds-footer-contact{gap:10px 18px}
+ .ds-footer-contact a{font-size:13px}
+ .ds-footer-credit{justify-self:start;text-align:left;padding-top:14px;border-top:1px solid #d9d0bb;width:100%}
+}
