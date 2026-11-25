@@ -5,6 +5,24 @@
 
 begin;
 
+-- Enforce private storage and server-side upload constraints for broker/internal media.
+-- The public listing bucket is intentionally separate and is not modified here.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'ds-v2-property-media',
+  'ds-v2-property-media',
+  false,
+  52428800,
+  array[
+    'image/jpeg','image/png','image/webp','image/avif','image/heic','image/heif',
+    'video/mp4','video/webm','video/quicktime'
+  ]
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 create or replace function public.ds_v2_validate_submission_google_maps_url()
 returns trigger
 language plpgsql
