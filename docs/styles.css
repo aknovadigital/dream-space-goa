@@ -39,3 +39,25 @@ dialog{border:0;border-radius:5px;padding:clamp(25px,5vw,40px);width:min(420px,9
  .ds-footer-contact a{font-size:13px}
  .ds-footer-credit{justify-self:start;text-align:left;padding-top:14px;border-top:1px solid #d9d0bb;width:100%}
 }
+
+/* Footer final layout: one clear Dream Space block, subtle developer credit below */
+.ds-footer{padding-top:38px;padding-bottom:22px}
+.ds-footer-main{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:22px!important;max-width:1180px}
+.ds-footer-brand{width:100%}
+.ds-footer .footer-brand img{width:150px}
+.ds-footer-brand>p{margin:10px 0 18px;font-size:13px}
+.ds-footer-contact{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start;flex-wrap:wrap;gap:12px 28px!important}
+.ds-footer-contact a,.ds-footer-contact .ds-email-placeholder{display:inline-block;font-size:13px;line-height:1.5;color:var(--teal);font-weight:600}
+.ds-footer-contact .ds-email-placeholder{font-weight:400;color:var(--muted)}
+.ds-footer-credit{width:100%;justify-self:auto!important;text-align:left!important;padding-top:16px;border-top:1px solid #d9d0bb;font-size:10px;line-height:1.6;color:#7d8580}
+.ds-footer-credit p{margin:0}
+.ds-footer-credit a{font-size:10px}
+.ds-footer-bottom{max-width:1180px;margin-top:4px}
+@media(max-width:700px){
+ .ds-footer{padding:28px 18px 18px}
+ .ds-footer-main{gap:18px!important}
+ .ds-footer .footer-brand img{width:132px}
+ .ds-footer-contact{align-items:flex-start!important;flex-direction:column!important;gap:9px!important}
+ .ds-footer-contact a,.ds-footer-contact .ds-email-placeholder{font-size:13px}
+ .ds-footer-credit{padding-top:13px}
+}
