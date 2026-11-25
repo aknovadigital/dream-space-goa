@@ -3,12 +3,25 @@
   const client = (window.supabase && cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("YOUR-PROJECT"))
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (s) => document.querySelector(s);
+  let requestedLoginRole = null;
   $("#year").textContent = new Date().getFullYear();
   function openLogin() {
-    $("#loginTitle").textContent = "Partner sign in";
+    requestedLoginRole = null;
+    $("#loginTitle").textContent = "Choose your login";
     $("#loginMessage").textContent = "";
+    $("#loginForm").hidden = true;
+    $(".login-choices").hidden = false;
     $("#adminDialog").showModal();
   }
+  function chooseLogin(role) {
+    requestedLoginRole = role;
+    $("#loginTitle").textContent = role === "admin" ? "Admin Login" : "Broker Login";
+    $("#loginMessage").textContent = "";
+    $(".login-choices").hidden = true;
+    $("#loginForm").hidden = false;
+  }
+  $("#adminLoginChoice").addEventListener("click", () => chooseLogin("admin"));
+  $("#brokerLoginChoice").addEventListener("click", () => chooseLogin("broker"));
   async function routeSignedInUser() {
     if (!client) return false;
     const { data: sessionData } = await client.auth.getSession();
@@ -77,5 +90,9 @@
     if (profileError || !profile || !profile.active || !["super_admin","team_member","broker"].includes(profile.role)) {
       await client.auth.signOut(); $("#loginMessage").textContent = "This account is not active or authorised."; return;
     }
-    window.location.href = profile.role === "broker" ? "broker.html" : "admin.html";  });
+    const isBroker = profile.role === "broker";
+    if ((requestedLoginRole === "broker" && !isBroker) || (requestedLoginRole === "admin" && isBroker)) {
+      await client.auth.signOut(); $("#loginMessage").textContent = requestedLoginRole === "admin" ? "This is not an admin account. Please choose Broker Login." : "This is not a broker account. Please choose Admin Login."; return;
+    }
+    window.location.href = isBroker ? "broker.html" : "admin.html";  });
 })();
