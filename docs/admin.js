@@ -17,7 +17,7 @@
   currentUser=user;$("#loginView").classList.add("hidden");$("#appView").classList.remove("hidden");$("#signedInAs").textContent=p.full_name||p.email||user.email;await refreshAll();
  }
  $("#adminLogin").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return notice("Supabase configuration missing.");const f=new FormData(e.currentTarget);const {data,error}=await sb.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});if(error)return notice(error.message);await enter(data.user)});
- $("#logoutBtn").onclick=async()=>{await sb.auth.signOut();location.reload()};
+ $("#logoutBtn").onclick=async()=>{await sb.auth.signOut();location.href="index.html"};
  function show(view){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const target=$("#"+view+"View");if(target)target.classList.remove("hidden");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.view===view));$("#pageTitle").textContent=titles[view]||view}
  document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>show(b.dataset.view));document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>show(b.dataset.goto));$("#homeDashboard").onclick=()=>{leadStatusFilter="";followupFilter="";$("#categoryFilter").value="";$("#propertySearch").value="";show("overview")};window.addEventListener("ds:brokers-loaded",e=>{rows.brokers=e.detail?.brokers||[];if(currentUser)renderAll()});
  async function get(table,order="created_at"){const {data,error}=await sb.from("ds_v2_"+table).select("*").order(order,{ascending:false});if(error)throw error;return data||[]}
