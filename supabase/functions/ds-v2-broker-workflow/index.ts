@@ -7,6 +7,11 @@ const cors = {
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+async function hashIp(ip: string) {
+  const bytes = new TextEncoder().encode(ip || "unknown");
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, "0")).join("");
+}
 const emailOk = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 254;
 const phoneOk = (s: string) => /^[+0-9() .-]{8,20}$/.test(s);
 
@@ -32,10 +37,14 @@ Deno.serve(async (req) => {
         return json({ error: "Please enter a valid name, operating area, email and mobile number." }, 400);
       }
       const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { count } = await admin.from("ds_v2_broker_application_rate")
+      const forwarded = req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const ipHash = await hashIp(forwarded);
+      const { count: contactCount } = await admin.from("ds_v2_broker_application_rate")
         .select("id", { count: "exact", head: true }).gte("created_at", since)
         .or("email.eq."+email+",phone.eq."+phone);
-      if ((count || 0) >= 3) return json({ error: "Too many applications from these contact details. Please try again later." }, 429);
+      const { count: ipCount } = await admin.from("ds_v2_broker_application_rate")
+        .select("id", { count: "exact", head: true }).eq("ip_hash", ipHash).gte("created_at", since);
+      if ((contactCount || 0) >= 3 || (ipCount || 0) >= 5) return json({ error: "Too many applications from these contact details or network. Please try again later." }, 429);
       const { data: existingUser } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if ((existingUser?.users || []).some(u => u.email?.toLowerCase() === email)) {
         return json({ error: "An account already exists for this email. Please contact Dream Space." }, 409);
@@ -47,7 +56,7 @@ Deno.serve(async (req) => {
         full_name, area_of_operation: area, email, phone, status: "pending",
       });
       if (insertError) return json({ error: "We could not submit the application. Please contact Dream Space." }, 400);
-      await admin.from("ds_v2_broker_application_rate").insert({ email, phone });
+      await admin.from("ds_v2_broker_application_rate").insert({ email, phone, ip_hash: ipHash });
       await admin.from("ds_v2_broker_application_rate").delete().lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
       return json({ success: true, message: "Your broker application has been submitted for review." }, 201);
     }
