@@ -81,6 +81,25 @@
     if (!error) e.currentTarget.reset();
   });
 
+
+  const brokerApplyForm = $("#brokerApplicationForm");
+  if (brokerApplyForm) brokerApplyForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(brokerApplyForm), msg = $("#brokerApplicationMessage"), button = brokerApplyForm.querySelector("button[type=submit],button:not([type])");
+    if (!client) { msg.textContent = "Application service is temporarily unavailable. Please contact Dream Space."; return; }
+    button.disabled = true; msg.textContent = "Submitting your application…";
+    try {
+      const { data, error } = await client.functions.invoke("ds-v2-broker-workflow", { body: {
+        action:"apply", full_name:f.get("full_name"), area_of_operation:f.get("area_of_operation"),
+        email:f.get("email"), phone:f.get("phone")
+      }});
+      if (error || data?.error) throw new Error(data?.error || error.message);
+      msg.textContent = "Thank you. Your application has been submitted for admin review.";
+      brokerApplyForm.reset();
+    } catch (err) { msg.textContent = err.message || "Could not submit application."; }
+    finally { button.disabled = false; }
+  });
+
   $("#loginForm").addEventListener("submit", async e => {
     e.preventDefault(); const f = new FormData(e.currentTarget);
     if (!client) { $("#loginMessage").textContent = "Supabase configuration is required before login can be enabled."; return; }
