@@ -49,6 +49,16 @@ $$;
 
 revoke all on function public.ds_v2_guard_super_admin_allowlist() from public;
 
+-- Remove super-admin privilege from legacy accounts outside the approved allowlist.
+-- Keep their Auth users and profile records; they become inactive team-member profiles.
+update public.ds_v2_profiles
+set role = 'team_member', active = false
+where role = 'super_admin'
+  and lower(coalesce(email, '')) not in (
+    'kartikgarg9465@gmail.com',
+    'brarbaljinder096@gmail.com'
+  );
+
 drop trigger if exists ds_v2_super_admin_allowlist_guard on public.ds_v2_profiles;
 create trigger ds_v2_super_admin_allowlist_guard
 before insert or update of role, email, id
