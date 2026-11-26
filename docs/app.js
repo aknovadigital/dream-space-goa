@@ -100,13 +100,6 @@
     finally { button.disabled = false; }
   });
 
-  $("#forgotPassword")?.addEventListener("click", async () => {
-    const email = $("#loginForm [name=email]").value.trim().toLowerCase();
-    if (!email) { $("#loginMessage").textContent = "Enter your email address first."; return; }
-    if (!client) { $("#loginMessage").textContent = "Password recovery is unavailable."; return; }
-    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname.replace("index.html","broker-reset.html") });
-    $("#loginMessage").textContent = error ? error.message : "If this account exists, a password recovery OTP has been sent to its email.";
-  });
   $("#loginForm").addEventListener("submit", async e => {
     e.preventDefault(); const f = new FormData(e.currentTarget);
     if (!client) { $("#loginMessage").textContent = "Supabase configuration is required before login can be enabled."; return; }
