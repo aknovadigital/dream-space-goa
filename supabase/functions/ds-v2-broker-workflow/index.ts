@@ -225,9 +225,9 @@ Deno.serve(async (req) => {
     if (action === "update_broker") {
       const id = String(body.id || ""), full_name = String(body.full_name || "").trim();
       const phone = String(body.phone || "").trim(), area = String(body.area_of_operation || "").trim();
-      if (!id || full_name.length < 2 || !phoneOk(phone) || area.length < 2) return json({ error: "Name, valid mobile and operating area are required." }, 400);
+      if (!id || full_name.length < 2 || (phone && !phoneOk(phone)) || area.length < 2) return json({ error: "Name and operating area are required; enter a valid mobile if provided." }, 400);
       const { error } = await admin.from("ds_v2_profiles").update({
-        full_name, phone, area_of_operation: area,
+        full_name, phone: phone || null, area_of_operation: area,
       }).eq("id", id).eq("role", "broker");
       if (error) return json({ error: "Could not update broker details." }, 400);
       return json({ success: true });
