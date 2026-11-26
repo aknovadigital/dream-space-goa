@@ -62,24 +62,6 @@ Deno.serve(async (req) => {
     }
 
     const { data: authData, error: authError } = await caller.auth.getUser();
-    if (action === "activate_broker") {
-      const u = authData.user;
-      if (authError || !u?.email || !u.email_confirmed_at) return json({ error: "Verify your email before activating your broker account." }, 401);
-      const { data: p } = await admin.from("ds_v2_profiles").select("id,role,active").eq("id", u.id).maybeSingle();
-      if (!p || p.role !== "broker") return json({ error: "Approved broker profile not found." }, 403);
-      const { error } = await admin.from("ds_v2_profiles").update({ active: true }).eq("id", u.id);
-      if (error) return json({ error: "Could not activate broker profile." }, 500);
-      return json({ success: true });
-    }
-    if (action === "finish_password_reset") {
-      const u = authData.user;
-      if (authError || !u?.email || !u.email_confirmed_at) return json({ error: "Verify your recovery OTP first." }, 401);
-      const password = String(body.password || "");
-      if (password.length < 10) return json({ error: "Password must be at least 10 characters." }, 400);
-      const { error } = await caller.auth.updateUser({ password });
-      if (error) return json({ error: "Could not update password." }, 400);
-      return json({ success: true });
-    }
     if (authError || !authData.user) return json({ error: "Sign in required." }, 401);
     const { data: profile } = await admin.from("ds_v2_profiles").select("role,active")
       .eq("id", authData.user.id).maybeSingle();
@@ -188,59 +170,46 @@ Deno.serve(async (req) => {
         if (error) return json({ error: "Could not reject application." }, 500);
         return json({ success: true, status: "rejected" });
       }
+      const password = String(body.password || "");
+      if (password.length < 10 || password.length > 128) return json({ error: "Admin must assign a password of at least 10 characters." }, 400);
       const { data: created, error: createError } = await admin.auth.admin.createUser({
-        email: app.email, password: crypto.randomUUID() + "Aa9!", email_confirm: false,
+        email: app.email, password, email_confirm: true,
         user_metadata: { full_name: app.full_name, ds_broker_approved: true },
       });
       if (createError || !created.user) return json({ error: "Could not create broker login. The email may already have an Auth account." }, 409);
       const { error: profileError } = await admin.from("ds_v2_profiles").insert({
         id: created.user.id, full_name: app.full_name, email: app.email, phone: app.phone,
-        area_of_operation: app.area_of_operation, role: "broker", active: false, permissions: {},
+        area_of_operation: app.area_of_operation, role: "broker", active: true, permissions: {},
       });
       if (profileError) {
         await admin.auth.admin.deleteUser(created.user.id);
         return json({ error: "Could not create broker profile." }, 500);
       }
-      const { error: otpError } = await caller.auth.signInWithOtp({ email: app.email, options: { shouldCreateUser: false } });
-      if (otpError) {
-        await admin.from("ds_v2_profiles").delete().eq("id", created.user.id);
-        await admin.auth.admin.deleteUser(created.user.id);
-        return json({ error: "Broker account could not be created because the OTP email could not be sent. Check Supabase email delivery and retry." }, 502);
-      }
       const { error: appError } = await admin.from("ds_v2_broker_applications").update({
         status: "approved", admin_note: note || null, reviewed_by: authData.user.id,
         reviewed_at: new Date().toISOString(), profile_id: created.user.id,
       }).eq("id", id);
-      if (appError) return json({ error: "Broker account created and OTP sent, but application status needs administrator review." }, 500);
-      return json({ success: true, status: "approved", otp_sent: true });
+      if (appError) return json({ error: "Broker account created, but application status needs administrator review." }, 500);
+      return json({ success: true, status: "approved" });
     }
 
     if (action === "create_broker") {
       const full_name = String(body.full_name || "").trim(), email = String(body.email || "").trim().toLowerCase();
       const phone = String(body.phone || "").trim(), area = String(body.area_of_operation || "").trim();
       if (full_name.length < 2 || !emailOk(email) || !phoneOk(phone) || area.length < 2) return json({ error: "Name, valid email, mobile and operating area are required." }, 400);
+      const password = String(body.password || "");
+      if (password.length < 10 || password.length > 128) return json({ error: "Assign a password of at least 10 characters." }, 400);
       const { data: created, error } = await admin.auth.admin.createUser({
-        email, password: crypto.randomUUID() + "Aa9!", email_confirm: false,
+        email, password, email_confirm: true,
         user_metadata: { full_name, ds_broker_admin_created: true },
       });
       if (error || !created.user) return json({ error: "Could not create account. This email may already be registered." }, 409);
       const { error: pError } = await admin.from("ds_v2_profiles").insert({
         id: created.user.id, full_name, email, phone, area_of_operation: area,
-        role: "broker", active: false, permissions: {},
+        role: "broker", active: true, permissions: {},
       });
       if (pError) { await admin.auth.admin.deleteUser(created.user.id); return json({ error: "Could not create broker profile." }, 500); }
-      const { error: otpError } = await caller.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      if (otpError) { await admin.from("ds_v2_profiles").delete().eq("id", created.user.id); await admin.auth.admin.deleteUser(created.user.id); return json({ error: "OTP email could not be sent. Check email delivery and retry." }, 502); }
-      return json({ success: true, otp_sent: true });
-    }
-
-    if (action === "reset_broker_password") {
-      const id = String(body.id || "");
-      const { data: target } = await admin.from("ds_v2_profiles").select("id,email,role").eq("id", id).maybeSingle();
-      if (!target || target.role !== "broker") return json({ error: "Broker account not found." }, 404);
-      const { error } = await caller.auth.resetPasswordForEmail(target.email || "", { redirectTo: body.redirect_to || undefined });
-      if (error) return json({ error: "Could not send password recovery email." }, 502);
-      return json({ success: true, otp_sent: true });
+      return json({ success: true });
     }
 
     if (action === "update_broker") {
