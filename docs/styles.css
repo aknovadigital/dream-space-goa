@@ -61,3 +61,7 @@ dialog{border:0;border-radius:5px;padding:clamp(25px,5vw,40px);width:min(420px,9
  .ds-footer-contact a,.ds-footer-contact .ds-email-placeholder{font-size:13px}
  .ds-footer-credit{padding-top:13px}
 }
+
+/* Office address link in the shared Dream Space footer */
+.ds-footer-contact .ds-office-address{flex-basis:100%;max-width:520px;line-height:1.6;text-decoration:none}
+.ds-footer-contact .ds-office-address:hover{text-decoration:underline;text-underline-offset:3px}
