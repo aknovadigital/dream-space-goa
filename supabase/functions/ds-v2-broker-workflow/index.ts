@@ -94,16 +94,23 @@ Deno.serve(async (req) => {
           admins.some(x => !["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"].includes(String(x.email||"").toLowerCase()))) {
         return json({ error: "Reset blocked. Both approved super-admin profiles must exist and be active first." }, 409);
       }
-      const { data: authList, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      if (usersError || !authList) return json({ error: "Could not verify existing Auth accounts; no data was deleted." }, 500);
+      const allAuthUsers = [];
+      for (let page = 1; page <= 20; page++) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error || !data) return json({ error: "Could not verify all Auth accounts; no data was deleted." }, 500);
+        allAuthUsers.push(...data.users);
+        if (data.users.length < 1000) break;
+        if (page === 20) return json({ error: "More than 20,000 Auth users found. Cleanup was stopped for manual review." }, 409);
+      }
       const keepIds = new Set(admins.map(x => x.id));
       const keepEmails = new Set(["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"]);
-      const missing = [...keepEmails].filter(email => !authList.users.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id) && u.email_confirmed_at));
+      const missing = [...keepEmails].filter(email => !allAuthUsers.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id) && u.email_confirmed_at));
       if (missing.length) return json({ error: "Both approved administrator Auth users must be verified before cleanup." }, 409);
 
       const deletedCounts: Record<string, number> = {};
       const clearTable = async (table: string) => {
-        const { count, error } = await admin.from(table).delete({ count: "exact" }).not("id", "is", null);
+        const keyColumn = table === "ds_v2_property_brokers" ? "property_id" : "id";
+        const { count, error } = await admin.from(table).delete({ count: "exact" }).not(keyColumn, "is", null);
         if (error && !/does not exist|schema cache/i.test(error.message)) throw new Error("Could not clear "+table+": "+error.message);
         deletedCounts[table] = count || 0;
       };
@@ -148,7 +155,7 @@ Deno.serve(async (req) => {
         deletedCounts["ds_v2_profiles"] = profileCount || 0;
 
         let authDeleted = 0;
-        for (const u of authList.users) {
+        for (const u of allAuthUsers) {
           if (!u.id || keepIds.has(u.id) || keepEmails.has((u.email||"").toLowerCase())) continue;
           const { error } = await admin.auth.admin.deleteUser(u.id);
           if (error) throw new Error("Could not delete an old login account: "+error.message);
