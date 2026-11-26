@@ -1,23 +1,18 @@
 -- Dream Space Goa: create the two owner-approved super-admin profiles.
--- Run only AFTER both Auth users exist and their email addresses are verified.
--- This script does not create Auth users, set passwords, or delete any records.
+-- First create both users manually in Supabase Dashboard -> Authentication -> Users.
+-- Set their passwords there. No OTP, email delivery, or verification flow is used.
+-- This script does not create Auth users, set passwords, or delete existing data.
 
 do $$
 declare
   expected_count integer;
-  verified_count integer;
 begin
   select count(*) into expected_count
   from auth.users
   where lower(email) in ('kartikgarg9465@gmail.com', 'brarbaljinder096@gmail.com');
 
-  select count(*) into verified_count
-  from auth.users
-  where lower(email) in ('kartikgarg9465@gmail.com', 'brarbaljinder096@gmail.com')
-    and email_confirmed_at is not null;
-
-  if expected_count <> 2 or verified_count <> 2 then
-    raise exception 'Both approved admin Auth users must exist and have verified email addresses before running this setup.';
+  if expected_count <> 2 then
+    raise exception 'Create both approved admin Auth users first: kartikgarg9465@gmail.com and brarbaljinder096@gmail.com.';
   end if;
 
   if exists (
@@ -40,14 +35,12 @@ select
   '{}'::jsonb
 from auth.users u
 where lower(u.email) in ('kartikgarg9465@gmail.com', 'brarbaljinder096@gmail.com')
-  and u.email_confirmed_at is not null
 on conflict (id) do update
 set
   email = excluded.email,
   role = 'super_admin',
   active = true;
 
--- Verify the resulting administrator profiles.
 select id, full_name, email, role, active
 from public.ds_v2_profiles
 where lower(email) in ('kartikgarg9465@gmail.com', 'brarbaljinder096@gmail.com')
