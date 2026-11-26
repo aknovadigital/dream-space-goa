@@ -68,6 +68,13 @@ Deno.serve(async (req) => {
     if (!profile?.active || profile.role !== "super_admin") return json({ error: "Only an active super admin can perform this action." }, 403);
 
     if (action === "reset_legacy_data") {
+      // SAFETY LOCK: the previous implementation deleted every row in several tables and every object in both media buckets.
+      // The requested cleanup is limited to specifically identified legacy sample records. No reliable sample IDs or
+      // ownership markers have been verified yet, so destructive reset remains disabled until an explicit reviewed
+      // allowlist and a non-destructive preview are implemented.
+      return json({ error: "Legacy reset is temporarily disabled. No database rows, Auth users, or storage objects were changed. Identify and review the exact legacy record IDs and storage paths before enabling cleanup." }, 423);
+
+      /* DISABLED LEGACY IMPLEMENTATION — retained temporarily for review only; unreachable due to the safety lock.
       const confirmation = String(body.confirmation || "");
       if (confirmation !== "DELETE OLD DATA") return json({ error: "Type DELETE OLD DATA to confirm this reset." }, 400);
       const approvedEmails = ["kartikgarg9465@gmail.com", "brarbaljinder096@gmail.com"];
@@ -150,6 +157,7 @@ Deno.serve(async (req) => {
       } catch (err) {
         return json({ error: err instanceof Error ? err.message : "Cleanup stopped. Review Supabase before retrying.", partial: deletedCounts }, 500);
       }
+      */
     }
 
     if (action === "list_applications") {
