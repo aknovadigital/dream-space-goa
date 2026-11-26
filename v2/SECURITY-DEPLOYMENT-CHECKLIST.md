@@ -77,6 +77,16 @@ After deployment and migration, open `https://aknovadigital.github.io/dream-spac
 - Supabase default email sending may be rate-limited; use custom SMTP for reliable OTP delivery.
 - This work does not itself execute SQL, deploy Edge Functions, or change the live Supabase project.
 
-## Data cleanup — last step only
+## Full old-data reset — last step only
 
-After all tests pass and both administrators have confirmed access, prepare and review a separate cleanup script. Delete only identified V2 test rows, non-admin test Auth users and test media objects. Preserve the schema, website, two super-admin accounts, buckets, policies and any genuine records. No cleanup is included in this deployment.
+A guarded admin action is included in the Broker applications view: **Reset old website data**. It is intentionally blocked unless both approved super-admin profiles exist, are active, and their verified Auth users match the allowlist.
+
+After both admins have set passwords and independently tested login:
+1. Sign in as one of the two approved super admins.
+2. Open Admin Portal → Broker applications.
+3. Click **Reset old website data**.
+4. Read the confirmation, then type exactly `DELETE OLD DATA`.
+
+The server-side reset clears V2 property listings, leads, follow-ups, deals, client shares, broker-property assignments, broker property submissions, broker applications, application rate-limit rows, and V2 site-interaction rows if present. It removes objects from the two existing V2 media buckets, but preserves the buckets themselves. It deletes all V2 profiles except the two allowlisted super admins and deletes all Auth users except those two verified administrators.
+
+It preserves the website files, table/schema definitions, SQL functions and policies, storage buckets, Supabase project settings, and the two new super-admin accounts. The reset is destructive and cannot be undone. If it reports a partial failure, stop and inspect Supabase before retrying; do not repeatedly click the reset button.
