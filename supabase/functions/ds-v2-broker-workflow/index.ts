@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
       }
       const keepIds = new Set(admins.map(x => x.id));
       const keepEmails = new Set(["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"]);
-      const missing = [...keepEmails].filter(email => !allAuthUsers.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id) && u.email_confirmed_at));
-      if (missing.length) return json({ error: "Both approved administrator Auth users must be verified before cleanup." }, 409);
+      const missing = [...keepEmails].filter(email => !allAuthUsers.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id)));
+      if (missing.length) return json({ error: "Both approved administrator Auth users must exist before cleanup." }, 409);
 
       const deletedCounts: Record<string, number> = {};
       const clearTable = async (table: string) => {
