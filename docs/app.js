@@ -46,7 +46,7 @@
   async function loadProperties() {
     const grid = $("#propertyGrid");
     if (!client) return;
-    let q = client.from("ds_v2_properties").select("id,title,slug,location,property_type,listing_type,price,currency,bedrooms,bathrooms,media").eq("inventory_category","public").in("availability",["available","under_offer"]).order("created_at",{ascending:false});
+    let q = client.from("ds_v2_public_properties").select("id,title,slug,location,property_type,listing_type,price,currency,bedrooms,bathrooms,media").eq("inventory_category","public").in("availability",["available","under_offer"]).order("created_at",{ascending:false});
     const listing = $("#filterListing").value, location = $("#filterLocation").value.trim(), type = $("#filterType").value;
     if (listing) q = q.eq("listing_type",listing);
     if (location) q = q.ilike("location", "%" + location + "%");
@@ -79,6 +79,25 @@
     const {error} = await client.from("ds_v2_leads").insert(payload);
     $("#formMessage").textContent = error ? "We could not submit your enquiry. Please try again or contact us directly." : "Thank you. Your enquiry has been received.";
     if (!error) e.currentTarget.reset();
+  });
+
+
+  const brokerApplyForm = $("#brokerApplicationForm");
+  if (brokerApplyForm) brokerApplyForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(brokerApplyForm), msg = $("#brokerApplicationMessage"), button = brokerApplyForm.querySelector("button[type=submit],button:not([type])");
+    if (!client) { msg.textContent = "Application service is temporarily unavailable. Please contact Dream Space."; return; }
+    button.disabled = true; msg.textContent = "Submitting your application…";
+    try {
+      const { data, error } = await client.functions.invoke("ds-v2-broker-workflow", { body: {
+        action:"apply", full_name:f.get("full_name"), area_of_operation:f.get("area_of_operation"),
+        email:f.get("email"), phone:f.get("phone")
+      }});
+      if (error || data?.error) throw new Error(data?.error || error.message);
+      msg.textContent = "Thank you. Your application has been submitted for admin review.";
+      brokerApplyForm.reset();
+    } catch (err) { msg.textContent = err.message || "Could not submit application."; }
+    finally { button.disabled = false; }
   });
 
   $("#loginForm").addEventListener("submit", async e => {
