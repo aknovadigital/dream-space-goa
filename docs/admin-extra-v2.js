@@ -23,6 +23,20 @@ function renderApplications(){
 }
 $("#refreshApplications").onclick=()=>loadApplications().catch(e=>alert(e.message));
 
+$("#resetLegacyData").onclick=async()=>{
+ if(!confirm("This will permanently delete all old Dream Space V2 property listings, leads, follow-ups, deals, broker assignments, broker applications, property submissions, V2 media files, and every login except the two approved super-admin accounts. The website and database structure will remain. Continue only after both new admins have tested their logins."))return;
+ const phrase=prompt('Type DELETE OLD DATA to confirm the reset:');
+ if(phrase!=="DELETE OLD DATA")return alert("Reset cancelled. No request was sent.");
+ const b=$("#resetLegacyData");b.disabled=true;b.textContent="Resetting…";
+ try{
+  const result=await invoke({action:"reset_legacy_data",confirmation:phrase});
+  alert("Old data reset completed. Removed records: "+JSON.stringify(result.deletedCounts)+"\nRemoved media: "+JSON.stringify(result.storageRemoved)+"\nOld login accounts deleted: "+result.authUsersDeleted);
+  await loadBrokers();await loadApplications();await loadSubs();
+ }catch(e){alert("Reset did not complete fully. Check the message and Supabase before retrying: "+e.message)}
+ finally{b.disabled=false;b.textContent="Reset old website data"}
+};
+
+
 async function loadSubs(){const r=await db.from("ds_v2_property_submissions").select("*").order("created_at",{ascending:false});if(r.error)throw r.error;subs=r.data||[];const ids=[...new Set(subs.map(s=>s.broker_id))];let profiles={};if(ids.length){const q=await db.from("ds_v2_profiles").select("id,full_name,email").in("id",ids);(q.data||[]).forEach(p=>profiles[p.id]=p.full_name||p.email)}await renderSubs(profiles)}
 async function renderSubs(profiles={}){if(!subs.length){$("#submissionsList").innerHTML='<div class="panel">No submissions yet.</div>';return}const cards=await Promise.all(subs.map(async s=>{const files=await Promise.all((s.media||[]).map(async m=>{const signed=await db.storage.from(m.bucket||"ds-v2-property-media").createSignedUrl(m.path,300);const url=signed.data?.signedUrl;if(!url)return '<span>'+esc(m.name||m.path.split("/").pop())+'</span>';return m.mime_type?.startsWith("video/")?'<video controls playsinline src="'+esc(url)+'"></video>':'<img src="'+esc(url)+'" alt="'+esc(m.name||s.title)+'">'}));return '<article class="sub-card"><div class="sub-head"><div><span class="pill">'+esc(s.status.replaceAll("_"," "))+'</span><h2>'+esc(s.title)+'</h2><p>'+esc(s.location)+' · '+esc(s.property_type)+' · '+esc(s.listing_type)+'</p></div><small>By '+esc(profiles[s.broker_id]||"Broker")+'<br>'+new Date(s.created_at).toLocaleDateString()+'</small></div><p>'+esc(s.description||"No description")+'</p><div class="sub-facts">Price: '+esc(s.price||"On request")+' · '+esc(s.bedrooms||"—")+' bed · '+esc(s.bathrooms||"—")+' bath · '+esc(s.built_up_area||"—")+' '+esc(s.area_unit||"")+'</div><div class="sub-files">'+files.join("")+'</div>'+(s.google_maps_url?'<a href="'+esc(s.google_maps_url)+'" target="_blank" rel="noopener">Open map ↗</a>':"")+(s.admin_comment?'<p class="sub-comment">Previous comment: '+esc(s.admin_comment)+'</p>':"")+(s.status==='approved'||s.status==='rejected'?'':'<p><button class="primary" data-review="'+s.id+'">Review submission</button></p>')+'</article>'}));$("#submissionsList").innerHTML=cards.join("");document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>openReview(b.dataset.review))}
 async function openReview(id){const s=subs.find(x=>x.id===id);$("#reviewForm").reset();$("#reviewForm [name=id]").value=id;$("#reviewForm [name=admin_comment]").value=s.admin_comment||"";const r=await db.from("ds_v2_profiles").select("id,full_name,email").eq("role","broker").eq("active",true).order("full_name");$("#reviewForm [name=broker_ids]").innerHTML=(r.data||[]).map(b=>'<option value="'+b.id+'">'+esc(b.full_name||b.email)+'</option>').join("");$("#reviewErr").textContent="";$("#reviewDlg").showModal()}
