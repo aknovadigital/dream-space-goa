@@ -1,9 +1,9 @@
 (() => {
  const cfg=window.DS_CONFIG||{}, sb=window.supabase&&cfg.supabaseUrl&&!cfg.supabaseUrl.includes("YOUR-PROJECT")?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null; window.DS_SB=sb;
  const $=s=>document.querySelector(s), today=new Date().toISOString().slice(0,10);
- let currentUser=null, rows={properties:[],leads:[],followups:[],deals:[],brokers:[]}, editing=null, pendingMediaFiles=[],leadStatusFilter="",followupFilter="";
+ let currentUser=null,currentProfile=null, rows={properties:[],leads:[],followups:[],deals:[],brokers:[]}, editing=null, pendingMediaFiles=[],leadStatusFilter="",followupFilter="";
  const allowedMediaTypes=new Set(["image/jpeg","image/png","image/webp","image/avif","image/heic","image/heif","video/mp4","video/webm","video/quicktime"]),maxMediaBytes=50*1024*1024;
- const titles={overview:"Business overview",properties:"Property inventory",leads:"Leads & clients",followups:"Follow-up manager",deals:"Closed deals"};
+ const titles={overview:"Business overview",properties:"Property inventory",leads:"Leads & clients",followups:"Follow-up manager",deals:"Closed deals",profile:"My profile"};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const money=v=>v?new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(v):"—";
  function notice(s){$("#loginError").textContent=s}
@@ -14,12 +14,13 @@
  async function enter(user){
   const {data:p,error}=await sb.from("ds_v2_profiles").select("*").eq("id",user.id).single();
   if(error||!p||!p.active||!["super_admin","team_member"].includes(p.role)){await sb.auth.signOut();notice("This account is not authorised for the admin workspace. Add its user UUID to ds_v2_profiles.");return}
-  currentUser=user;$("#loginView").classList.add("hidden");$("#appView").classList.remove("hidden");$("#signedInAs").textContent=p.full_name||p.email||user.email;await refreshAll();
+  currentUser=user;currentProfile=p;$("#loginView").classList.add("hidden");$("#appView").classList.remove("hidden");$("#signedInAs").textContent=p.full_name||p.email||user.email;$("#adminProfileForm [name=full_name]").value=p.full_name||"";$("#adminProfileForm [name=phone]").value=p.phone||"";$("#adminProfileForm [name=email]").value=user.email||p.email||"";await refreshAll();
  }
+ $("#adminProfileForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget,values=new FormData(form),full_name=String(values.get("full_name")||"").trim(),phone=String(values.get("phone")||"").trim();const message=$("#adminProfileMessage");if(!full_name){message.textContent="Please enter your full name.";return}message.textContent="Saving profile…";const {data,error}=await sb.from("ds_v2_profiles").update({full_name,phone:phone||null}).eq("id",currentUser.id).select("id,full_name,phone").single();if(error){message.textContent="Could not save profile: "+error.message;return}currentProfile={...currentProfile,...data};$("#signedInAs").textContent=data.full_name||currentUser.email;message.textContent="Profile updated successfully.";});
  $("#adminLogin").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return notice("Supabase configuration missing.");const f=new FormData(e.currentTarget);const {data,error}=await sb.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});if(error)return notice(error.message);await enter(data.user)});
  $("#logoutBtn").onclick=async()=>{const home=new URL("./index.html",window.location.href).href;try{if(sb)await sb.auth.signOut()}finally{window.location.replace(home)}};
  function show(view){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const target=$("#"+view+"View");if(target)target.classList.remove("hidden");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.view===view));$("#pageTitle").textContent=titles[view]||view}
- document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>show(b.dataset.view));document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>show(b.dataset.goto));$("#homeDashboard").onclick=()=>{leadStatusFilter="";followupFilter="";$("#categoryFilter").value="";$("#propertySearch").value="";show("overview")};window.addEventListener("ds:brokers-loaded",e=>{rows.brokers=e.detail?.brokers||[];if(currentUser)renderAll()});
+ document.querySelectorAll(".nav[data-view]").forEach(b=>b.onclick=()=>show(b.dataset.view));document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>show(b.dataset.goto));$("#homeDashboard").onclick=()=>{leadStatusFilter="";followupFilter="";$("#categoryFilter").value="";$("#propertySearch").value="";show("overview")};window.addEventListener("ds:brokers-loaded",e=>{rows.brokers=e.detail?.brokers||[];if(currentUser)renderAll()});
  async function get(table,order="created_at"){const {data,error}=await sb.from("ds_v2_"+table).select("*").order(order,{ascending:false});if(error)throw error;return data||[]}
  async function refreshAll(){try{[rows.properties,rows.leads,rows.followups,rows.deals]=await Promise.all([get("properties"),get("leads"),get("followups","due_at"),get("deals","closing_date")]);renderAll()}catch(e){alert("Could not load CRM data: "+e.message)}}
  function table(headers,body){return '<table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join("")+'</tr></thead><tbody>'+(body||'<tr><td colspan="'+headers.length+'" class="muted">No records yet.</td></tr>')+'</tbody></table>'}
