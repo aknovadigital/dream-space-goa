@@ -9,3 +9,8 @@ create index if not exists ds_v2_broker_app_rate_created_idx
   on public.ds_v2_broker_application_rate(created_at);
 alter table public.ds_v2_broker_application_rate enable row level security;
 revoke all on public.ds_v2_broker_application_rate from anon, authenticated;
+
+alter table public.ds_v2_broker_application_rate
+  add column if not exists ip_hash text;
+create index if not exists ds_v2_broker_app_rate_ip_created_idx
+  on public.ds_v2_broker_application_rate(ip_hash, created_at);
