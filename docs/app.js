@@ -46,7 +46,7 @@
   async function loadProperties() {
     const grid = $("#propertyGrid");
     if (!client) return;
-    let q = client.from("ds_v2_properties").select("id,title,slug,location,property_type,listing_type,price,currency,bedrooms,bathrooms,media").eq("inventory_category","public").in("availability",["available","under_offer"]).order("created_at",{ascending:false});
+    let q = client.from("ds_v2_public_properties").select("id,title,slug,location,property_type,listing_type,price,currency,bedrooms,bathrooms,media").eq("inventory_category","public").in("availability",["available","under_offer"]).order("created_at",{ascending:false});
     const listing = $("#filterListing").value, location = $("#filterLocation").value.trim(), type = $("#filterType").value;
     if (listing) q = q.eq("listing_type",listing);
     if (location) q = q.ilike("location", "%" + location + "%");
