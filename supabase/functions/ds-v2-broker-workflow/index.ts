@@ -85,6 +85,82 @@ Deno.serve(async (req) => {
       .eq("id", authData.user.id).maybeSingle();
     if (!profile?.active || profile.role !== "super_admin") return json({ error: "Only an active super admin can perform this action." }, 403);
 
+    if (action === "reset_legacy_data") {
+      const confirmation = String(body.confirmation || "");
+      if (confirmation !== "DELETE OLD DATA") return json({ error: "Type DELETE OLD DATA to confirm this reset." }, 400);
+      const { data: admins, error: adminsError } = await admin.from("ds_v2_profiles")
+        .select("id,email,role,active").eq("role","super_admin").eq("active",true);
+      if (adminsError || !admins || admins.length !== 2 ||
+          admins.some(x => !["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"].includes(String(x.email||"").toLowerCase()))) {
+        return json({ error: "Reset blocked. Both approved super-admin profiles must exist and be active first." }, 409);
+      }
+      const { data: authList, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (usersError || !authList) return json({ error: "Could not verify existing Auth accounts; no data was deleted." }, 500);
+      const keepIds = new Set(admins.map(x => x.id));
+      const keepEmails = new Set(["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"]);
+      const missing = [...keepEmails].filter(email => !authList.users.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id) && u.email_confirmed_at));
+      if (missing.length) return json({ error: "Both approved administrator Auth users must be verified before cleanup." }, 409);
+
+      const deletedCounts: Record<string, number> = {};
+      const clearTable = async (table: string) => {
+        const { count, error } = await admin.from(table).delete({ count: "exact" }).not("id", "is", null);
+        if (error && !/does not exist|schema cache/i.test(error.message)) throw new Error("Could not clear "+table+": "+error.message);
+        deletedCounts[table] = count || 0;
+      };
+      try {
+        // Remove dependent records first. The profile and Auth accounts are retained until data is cleared.
+        for (const table of [
+          "ds_v2_client_shares","ds_v2_property_brokers","ds_v2_followups",
+          "ds_v2_deals","ds_v2_property_submissions","ds_v2_leads",
+          "ds_v2_properties","ds_v2_broker_applications","ds_v2_broker_application_rate",
+          "ds_v2_site_interactions"
+        ]) await clearTable(table);
+
+        // Delete all files in the two existing V2 buckets, preserving the buckets and policies.
+        const storageRemoved: Record<string, number> = {};
+        for (const bucket of ["ds-v2-property-media","ds-v2-public-media"]) {
+          const paths: string[] = [], walk = async (prefix: string) => {
+            let offset = 0;
+            while (true) {
+              const { data, error } = await admin.storage.from(bucket).list(prefix, { limit: 1000, offset });
+              if (error) throw new Error("Could not list storage bucket "+bucket+": "+error.message);
+              if (!data?.length) break;
+              for (const item of data) {
+                const full = prefix ? prefix+"/"+item.name : item.name;
+                if (item.id === null) await walk(full);
+                else paths.push(full);
+              }
+              if (data.length < 1000) break;
+              offset += data.length;
+            }
+          };
+          await walk("");
+          for (let i=0;i<paths.length;i+=100) {
+            const { error } = await admin.storage.from(bucket).remove(paths.slice(i,i+100));
+            if (error) throw new Error("Could not clear storage bucket "+bucket+": "+error.message);
+          }
+          storageRemoved[bucket] = paths.length;
+        }
+
+        const { error: profileDeleteError, count: profileCount } = await admin.from("ds_v2_profiles")
+          .delete({ count: "exact" }).not("id","in","("+[...keepIds].join(",")+")");
+        if (profileDeleteError) throw new Error("Could not remove old profiles: "+profileDeleteError.message);
+        deletedCounts["ds_v2_profiles"] = profileCount || 0;
+
+        let authDeleted = 0;
+        for (const u of authList.users) {
+          if (!u.id || keepIds.has(u.id) || keepEmails.has((u.email||"").toLowerCase())) continue;
+          const { error } = await admin.auth.admin.deleteUser(u.id);
+          if (error) throw new Error("Could not delete an old login account: "+error.message);
+          authDeleted++;
+        }
+        return json({ success: true, deletedCounts, storageRemoved, authUsersDeleted: authDeleted,
+          preservedAdmins: [...keepEmails], message: "Old V2 records, non-admin logins and V2 media have been removed. Website schema, buckets and the two administrators were preserved." });
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : "Cleanup stopped. Review Supabase before retrying.", partial: deletedCounts }, 500);
+      }
+    }
+
     if (action === "list_applications") {
       const { data, error } = await admin.from("ds_v2_broker_applications").select("*").order("created_at", { ascending: false });
       if (error) return json({ error: "Could not load applications." }, 500);
