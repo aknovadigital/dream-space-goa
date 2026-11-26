@@ -70,10 +70,12 @@ Ensure server-side Edge Function secrets are configured: `SUPABASE_URL`, `SUPABA
 - Public pages read the safe property view; anonymous direct reads from the base properties table are denied.
 - Existing public pages, enquiry forms, admin CRM, and property submission workflow continue to work.
 
-## Old-data reset — last step only
+## Old-data reset — disabled pending record-level review
 
-The admin portal includes a guarded **Reset old website data** action. It is destructive and must not be used until both approved admins can sign in and all new workflows have been tested.
+The destructive reset action is intentionally disabled in both the Admin Portal and the `ds-v2-broker-workflow` Edge Function.
 
-The reset is intended to clear old V2 properties, leads, follow-ups, deals, client shares, broker-property assignments, broker submissions, broker applications, rate-limit rows, V2 site interactions, old V2 profiles, old Auth users, and files in the two existing V2 media buckets. It preserves the website files, database schema, policies/functions, storage buckets, Supabase project settings, and the two approved super-admin accounts.
+The previous implementation deleted all rows from multiple V2 tables, all objects in both V2 media buckets, and all Auth users other than the two allowlisted admins. This is broader than the requested removal of known sample data and could delete genuine properties, leads, broker applications, submissions, notifications, media, or user accounts.
 
-Before running it, take a Supabase backup/export and verify the exact records and storage objects to be removed. Then use the admin portal's two-step confirmation. If it reports a partial failure, stop and inspect Supabase before retrying. This reset cannot be undone.
+Do not re-enable or invoke the reset. First identify the exact legacy sample records using a read-only inventory, confirm their IDs and relationships with the project owner, and prepare a reviewed allowlist-based cleanup with a preview. The old Kartik profile and its Auth user must be handled separately only after its references and ownership are verified.
+
+Before any future cleanup, take a Supabase backup/export, verify both approved administrator accounts, and test the broker and public website workflows. Database structures, RLS policies, functions, storage buckets, existing website files, and unselected data must remain untouched.
