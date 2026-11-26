@@ -1,92 +1,79 @@
-# Dream Space Goa — security deployment checklist
+# Dream Space Goa — deployment checklist
 
-All changes are staged on `security/broker-approval-auth-reset`. They are not live until reviewed, merged, migrations applied and Edge Functions deployed.
+All changes are staged on `security/broker-approval-auth-reset`. They are not live until reviewed, merged, migrations applied, and Edge Functions deployed.
 
-## Included work
+## Agreed authentication behaviour
 
-- Allowlist for exactly the two approved super-admin email addresses.
-- Private OTP-based super-admin bootstrap and password setup.
-- Public broker application form and server-side application endpoint.
-- Admin pending-application queue with approve/reject actions.
-- Approved and admin-created broker accounts receive email OTP and set their own password.
-- Broker activation requires verified email; new broker profiles remain inactive until activation.
-- Broker password recovery uses email OTP, not an admin-entered password.
-- Broker inventory access: public listings plus exclusive listings explicitly assigned to that broker; no shared broker-category inventory.
-- Public-safe property view excludes owner contact details, commission and internal notes from anonymous access.
-- Retired the old plaintext-password broker admin endpoint.
+- No OTP, email verification workflow, SMTP, email notifications, SMS, or messaging provider is used.
+- The two super-admin Auth users are created manually by the project owner in Supabase Dashboard.
+- Super-admin access is restricted to:
+  - `kartikgarg9465@gmail.com`
+  - `brarbaljinder096@gmail.com`
+- Public broker applications create a pending application only; they do not create Auth users.
+- A super admin approves or rejects applications manually. On approval, the admin assigns the initial password and the broker account is created immediately.
+- Admin-created brokers also receive an admin-assigned initial password.
+- Brokers sign in with email and password.
+- Brokers can change their password only by entering the old password, new password, and confirmation. The old password is checked by signing in again before the password is updated.
+- No forgot-password, broker reset-password, or admin reset-password control exists.
+- Passwords are passed to Supabase Auth over HTTPS and are not stored in application tables.
+- Broker inventory is limited to public listings and exclusive listings assigned to that broker. Private listings and other brokers' exclusive listings remain inaccessible.
+- Brokers cannot edit or delete existing property listings.
 
 ## Before deployment
 
-1. Confirm both approved admin inboxes can receive email.
-2. Supabase Dashboard → Authentication → Providers → Email: enable email sign-in and OTP.
-3. Keep email confirmation enabled.
-4. Disable unrestricted public Auth signups if your Supabase project permits it. Broker applicants are only applications until approved; they must not create Auth users directly.
-5. Supabase Dashboard → Authentication → Email Templates:
-   - Configure the Magic Link/OTP template to show the numeric token using `{{ .Token }}`.
-   - Include instructions and the static activation page URL: `https://aknovadigital.github.io/dream-space-goa/broker-activate.html`.
-   - Also mention the admin setup page: `https://aknovadigital.github.io/dream-space-goa/admin-setup.html`.
-   - Configure the recovery template to show the numeric recovery token and the recovery page URL: `https://aknovadigital.github.io/dream-space-goa/broker-reset.html`.
-   - Do not rely on a confirmation link-only template; users need the numeric OTP.
-6. Authentication → URL Configuration: add the GitHub Pages and custom domain redirect URLs, including `https://aknovadigital.github.io/dream-space-goa/*` and `https://dreamspaceestate.in/*` if active.
+1. Confirm access to the Supabase project and repository.
+2. In Supabase Dashboard → Authentication → Users, create these two users manually and assign strong passwords:
+   - `kartikgarg9465@gmail.com`
+   - `brarbaljinder096@gmail.com`
+3. Do not use public sign-up or any setup page for administrator creation.
+4. Disable unrestricted public Auth signups if enabled. Broker applications are reviewed by admins and only create Auth users after approval.
+5. No SMTP, email templates, OTP delivery, recovery templates, or email redirect setup is needed for this workflow.
 
 ## Apply SQL migrations
 
-Run these in Supabase SQL Editor in this order, after confirming the existing V2 schema and broker workflow migration are already present:
+Run these in Supabase SQL Editor in this order, after confirming the existing V2 schema and broker visibility migration are already present:
 
 1. `v2/broker-applications-security-migration.sql`
 2. `v2/broker-application-rate-limit.sql`
-3. `v2/super-admin-allowlist-migration.sql`
-4. `v2/public-property-safe-view.sql`
-5. After both new admin Auth users have been OTP verified and set their passwords, run `v2/bootstrap-super-admin-profiles.sql` only if the profiles need reconciliation.
+3. `v2/broker-assigned-inventory-only.sql`
+4. `v2/super-admin-allowlist-migration.sql`
+5. `v2/bootstrap-super-admin-profiles.sql`
+6. `v2/public-property-safe-view.sql`
 
-The migrations are additive and do not delete sample records, Auth users, storage objects, buckets, or website files.
+The migrations add the broker application workflow, restrict broker access, add a public-safe property view, and link the two manually created Auth users to super-admin profiles. Review the SQL output after each step. Do not run the old-data reset as part of migration deployment.
 
 ## Deploy Edge Functions
 
-Deploy these functions from the repository using Supabase CLI, keeping JWT verification enabled:
+Deploy from the repository using Supabase CLI with JWT verification enabled for authenticated admin actions:
 
-- `ds-v2-admin-bootstrap`
 - `ds-v2-broker-workflow`
-- `ds-v2-admin-users` (the retired endpoint returns HTTP 410 and prevents old plaintext-password actions)
+- `ds-v2-admin-users` (retired endpoint; returns HTTP 410 and blocks legacy password-management actions)
 
-Ensure standard Edge Function secrets are present: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Never place the service-role key in browser code or GitHub.
+The old `ds-v2-admin-bootstrap` function is no longer used. Delete/disable that deployed function in Supabase after confirming the new manual admin accounts work.
 
-## First administrator setup
-
-After deployment and migration, open `https://aknovadigital.github.io/dream-space-goa/admin-setup.html` and set up each approved admin account separately. Each must receive an OTP and privately set a password. Do not create them manually in Auth first; the bootstrap function creates the pending Auth record.
+Ensure server-side Edge Function secrets are configured: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Never place the service-role key in browser code, repository files, or chat.
 
 ## Test before launch
 
-- Both admins can sign in with email/password and have super_admin profiles.
-- A non-allowlisted account cannot become super_admin.
-- A public broker application creates only a pending application row, not an Auth user.
-- Admin can approve/reject; only approved applications receive OTP.
-- Broker activation verifies OTP, sets password, and activates the profile.
-- Rejected applicants cannot log in or access broker pages.
-- Forgot password sends a recovery OTP; new password works.
-- Admin-created brokers follow the same OTP activation flow.
-- Broker sees public inventory and only assigned exclusive listings.
-- Broker cannot see private inventory or another broker's exclusive listings.
+- Both approved admins can sign in and have active `super_admin` profiles.
+- A non-allowlisted user cannot become a super admin.
+- Public broker application creates only a pending application row and no Auth user.
+- Admin can approve/reject an application; approval requires admin-assigned initial password and creates an active broker.
+- Admin can directly create a broker with assigned initial password.
+- Brokers can sign in using email and password.
+- Correct old password + matching new password changes broker password; incorrect old password fails.
+- There is no forgot-password or reset-password UI or flow.
+- Rejected applicants cannot sign in.
+- Broker sees public listings and only exclusive listings assigned to that broker.
+- Broker cannot see private inventory or another broker's exclusive listings/media.
 - Broker cannot edit/delete existing inventory.
-- Public pages can read the safe view; anonymous direct reads from the base properties table are denied.
-- Public leads/enquiry form and all existing website pages still work.
+- Public pages read the safe property view; anonymous direct reads from the base properties table are denied.
+- Existing public pages, enquiry forms, admin CRM, and property submission workflow continue to work.
 
-## Remaining operational limitations
+## Old-data reset — last step only
 
-- Admin dashboard pending queue is implemented; email notifications to admins are not configured. Add a transactional email provider before relying on email alerts.
-- Supabase default email sending may be rate-limited; use custom SMTP for reliable OTP delivery.
-- This work does not itself execute SQL, deploy Edge Functions, or change the live Supabase project.
+The admin portal includes a guarded **Reset old website data** action. It is destructive and must not be used until both approved admins can sign in and all new workflows have been tested.
 
-## Full old-data reset — last step only
+The reset is intended to clear old V2 properties, leads, follow-ups, deals, client shares, broker-property assignments, broker submissions, broker applications, rate-limit rows, V2 site interactions, old V2 profiles, old Auth users, and files in the two existing V2 media buckets. It preserves the website files, database schema, policies/functions, storage buckets, Supabase project settings, and the two approved super-admin accounts.
 
-A guarded admin action is included in the Broker applications view: **Reset old website data**. It is intentionally blocked unless both approved super-admin profiles exist, are active, and their verified Auth users match the allowlist.
-
-After both admins have set passwords and independently tested login:
-1. Sign in as one of the two approved super admins.
-2. Open Admin Portal → Broker applications.
-3. Click **Reset old website data**.
-4. Read the confirmation, then type exactly `DELETE OLD DATA`.
-
-The server-side reset clears V2 property listings, leads, follow-ups, deals, client shares, broker-property assignments, broker property submissions, broker applications, application rate-limit rows, and V2 site-interaction rows if present. It removes objects from the two existing V2 media buckets, but preserves the buckets themselves. It deletes all V2 profiles except the two allowlisted super admins and deletes all Auth users except those two verified administrators.
-
-It preserves the website files, table/schema definitions, SQL functions and policies, storage buckets, Supabase project settings, and the two new super-admin accounts. The reset is destructive and cannot be undone. If it reports a partial failure, stop and inspect Supabase before retrying; do not repeatedly click the reset button.
+Before running it, take a Supabase backup/export and verify the exact records and storage objects to be removed. Then use the admin portal's two-step confirmation. If it reports a partial failure, stop and inspect Supabase before retrying. This reset cannot be undone.
