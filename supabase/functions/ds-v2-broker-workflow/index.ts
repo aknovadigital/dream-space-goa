@@ -70,10 +70,12 @@ Deno.serve(async (req) => {
     if (action === "reset_legacy_data") {
       const confirmation = String(body.confirmation || "");
       if (confirmation !== "DELETE OLD DATA") return json({ error: "Type DELETE OLD DATA to confirm this reset." }, 400);
+      const approvedEmails = ["kartikgarg9465@gmail.com", "brarbaljinder096@gmail.com"];
       const { data: admins, error: adminsError } = await admin.from("ds_v2_profiles")
-        .select("id,email,role,active").eq("role","super_admin").eq("active",true);
+        .select("id,email,role,active").eq("role", "super_admin").eq("active", true)
+        .in("email", approvedEmails);
       if (adminsError || !admins || admins.length !== 2 ||
-          admins.some(x => !["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"].includes(String(x.email||"").toLowerCase()))) {
+          approvedEmails.some(email => !admins.some(x => String(x.email || "").toLowerCase() === email))) {
         return json({ error: "Reset blocked. Both approved super-admin profiles must exist and be active first." }, 409);
       }
       const allAuthUsers = [];
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
         if (page === 20) return json({ error: "More than 20,000 Auth users found. Cleanup was stopped for manual review." }, 409);
       }
       const keepIds = new Set(admins.map(x => x.id));
-      const keepEmails = new Set(["kartikgarg946@gmail.com","brarbaljinder096@gmail.com"]);
+      const keepEmails = new Set(["kartikgarg9465@gmail.com", "brarbaljinder096@gmail.com"]);
       const missing = [...keepEmails].filter(email => !allAuthUsers.some(u => u.id && u.email?.toLowerCase() === email && keepIds.has(u.id)));
       if (missing.length) return json({ error: "Both approved administrator Auth users must exist before cleanup." }, 409);
 
@@ -102,7 +104,7 @@ Deno.serve(async (req) => {
           "ds_v2_client_shares","ds_v2_property_brokers","ds_v2_followups",
           "ds_v2_deals","ds_v2_property_submissions","ds_v2_leads",
           "ds_v2_properties","ds_v2_broker_applications","ds_v2_broker_application_rate",
-          "ds_v2_site_interactions"
+          "ds_v2_site_interactions","ds_v2_notifications"
         ]) await clearTable(table);
 
         // Delete all files in the two existing V2 buckets, preserving the buckets and policies.
