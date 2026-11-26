@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dream Space | Administrator setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#203b37;--teal:#294b45;--cream:#f2edd8;--line:#d9d4c4;--muted:#69736e}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--cream);color:var(--ink);font:15px "DM Sans",sans-serif;display:grid;place-items:center;padding:22px}
+.card{width:min(100%,470px);background:#fff;padding:34px;border:1px solid var(--line);box-shadow:0 18px 60px #203b3712}
+.logo{width:170px;max-height:55px;object-fit:contain;object-position:left;margin-bottom:22px}
+h1{font:36px "Playfair Display",serif;margin:0 0 10px}p{color:var(--muted);line-height:1.6;margin:0 0 22px}
+label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}input{width:100%;padding:13px;border:1px solid var(--line);font:inherit;color:var(--ink);background:#fff}
+button{width:100%;border:0;background:var(--teal);color:white;padding:14px;font:600 14px "DM Sans",sans-serif;cursor:pointer;margin-top:18px}
+button:disabled{opacity:.6;cursor:wait}.msg{min-height:24px;margin-top:14px;font-size:13px;color:var(--teal)}.small{font-size:12px;margin-top:18px}
+.hidden{display:none!important}a{color:var(--teal)}
+</style>
+</head>
+<body>
+<main class="card">
+<img class="logo" src="assets/dream-space-logo.svg" alt="Dream Space">
+<section id="start">
+<h1>Administrator setup</h1>
+<p>This private setup is restricted to the two approved administrator email addresses.</p>
+<form id="startForm">
+<label for="fullName">Full name</label><input id="fullName" name="full_name" maxlength="100" autocomplete="name" required>
+<label for="email">Approved email address</label><input id="email" name="email" type="email" autocomplete="email" required>
+<button id="sendCode" type="submit">Send verification code</button>
+</form>
+</section>
+<section id="verify" class="hidden">
+<h1>Verify your email</h1><p>Enter the one-time code sent to your approved email address, then choose your private password.</p>
+<form id="verifyForm">
+<label for="token">Email verification code</label><input id="token" name="token" inputmode="numeric" autocomplete="one-time-code" maxlength="12" required>
+<label for="password">Create password</label><input id="password" name="password" type="password" minlength="10" autocomplete="new-password" required>
+<label for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" minlength="10" autocomplete="new-password" required>
+<button id="finish" type="submit">Verify and create administrator account</button>
+</form>
+</section>
+<p id="message" class="msg" role="status" aria-live="polite"></p>
+<p class="small">Already set up? <a href="admin.html">Go to administrator login</a>.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="admin-setup.js"></script>
+</body></html>
