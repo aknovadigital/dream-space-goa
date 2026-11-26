@@ -21,17 +21,8 @@ function renderApplications(){
 }
 $("#refreshApplications").onclick=()=>loadApplications().catch(e=>alert(e.message));
 
-$("#resetLegacyData").onclick=async()=>{
- if(!confirm("This will permanently delete all old Dream Space V2 property listings, leads, follow-ups, deals, broker assignments, broker applications, property submissions, V2 media files, and every login except the two approved super-admin accounts. The website and database structure will remain. Continue only after both new admins have tested their logins."))return;
- const phrase=prompt('Type DELETE OLD DATA to confirm the reset:');
- if(phrase!=="DELETE OLD DATA")return alert("Reset cancelled. No request was sent.");
- const b=$("#resetLegacyData");b.disabled=true;b.textContent="Resetting…";
- try{
-  const result=await invoke({action:"reset_legacy_data",confirmation:phrase});
-  alert("Old data reset completed. Removed records: "+JSON.stringify(result.deletedCounts)+"\nRemoved media: "+JSON.stringify(result.storageRemoved)+"\nOld login accounts deleted: "+result.authUsersDeleted);
-  await loadBrokers();await loadApplications();await loadSubs();
- }catch(e){alert("Reset did not complete fully. Check the message and Supabase before retrying: "+e.message)}
- finally{b.disabled=false;b.textContent="Reset old website data"}
+$("#resetLegacyData").onclick=()=>{
+ alert("The legacy reset is temporarily disabled for safety. No data was changed. First review and select the exact old sample records and storage files to remove.");
 };
 
 
