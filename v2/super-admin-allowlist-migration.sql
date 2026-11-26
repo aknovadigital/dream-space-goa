@@ -10,22 +10,23 @@ set search_path = public, auth
 as $$
 declare
   auth_email text;
+  email_verified boolean;
   existing_admins integer;
 begin
   if new.role <> 'super_admin' then
     return new;
   end if;
 
-  select lower(u.email)
-    into auth_email
+  select lower(u.email), (u.email_confirmed_at is not null)
+    into auth_email, email_verified
   from auth.users u
   where u.id = new.id;
 
-  if auth_email is null or auth_email not in (
+  if auth_email is null or not coalesce(email_verified, false) or auth_email not in (
     'kartikgarg9465@gmail.com',
     'brarbaljinder096@gmail.com'
   ) then
-    raise exception 'This email address is not authorised for a super-admin account.';
+    raise exception 'A verified, allowlisted email address is required for a super-admin account.';
   end if;
 
   select count(*)
